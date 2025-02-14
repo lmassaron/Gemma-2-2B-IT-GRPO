@@ -10,4 +10,7 @@ references:
 * https://yugeten.github.io/posts/2025/01/ppogrpo/
 * https://github.com/google-deepmind/gemma/blob/main/colabs/gsm8k_eval.ipynb
 * https://www.stephendiehl.com/posts/grpotrainer/
+* https://www.stephendiehl.com/posts/small_reasoning_models/
 * https://huggingface.co/docs/trl/grpo_trainer#trl.GRPOConfig
+* https://unfoldai.com/reasoning-in-a-non-english-language/
+* https://gist.github.com/willccbb/4676755236bb08cab5f4e54a0475d6fb
