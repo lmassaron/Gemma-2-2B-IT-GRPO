@@ -4,7 +4,7 @@ import warnings
 import contextlib
 import torch
 from huggingface_hub import login
-from datasets import load_dataset, Dataset
+from datasets import load_dataset
 from vllm.distributed.parallel_state import (
     destroy_model_parallel,
     destroy_distributed_environment,
@@ -31,19 +31,22 @@ XML_COT_FORMAT = """\
 """
 
 SYSTEM_PROMPT = (
-    R1_STYLE_SYSTEM_PROMPT
-    + "\n\n"
-    + TASK_SPECIFIC_INSTRUCTIONS
-    + "\n"
-    + EXAMPLE
-    + "\n"
+    R1_STYLE_SYSTEM_PROMPT + "\n\n" + TASK_SPECIFIC_INSTRUCTIONS + "\n" + EXAMPLE + "\n"
 )
 
-class Config():
+
+class Config:
+    """Configuration parameters"""
+
+    MODEL_NAME = "Google/gemma-2-2b-it"
+    OUTPUT_MODEL = "gemma-2-2b-it-grpo"
+
     max_prompt_length = 256
     max_completion_length = 256
 
+
 def init():
+    """Initialization script"""
     os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -56,7 +59,9 @@ def init():
     gc.collect()
     warnings.filterwarnings("ignore")
 
+
 def close(llm=None):
+    """Close vllm"""
     destroy_model_parallel()
     destroy_distributed_environment()
     if llm:
@@ -72,19 +77,23 @@ def is_bfloat16_supported():
     """Checks if the current device supports bfloat16."""
     return torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
 
+
 def info_device():
+    """Get device for PyTorch"""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     return device
 
 
 def extract_hash_answer(text: str) -> str | None:
+    """Extract numeric answer from GSM8K example"""
     if "####" not in text:
         return None
     return text.split("####")[1].strip()
 
 
 def get_gsm8k_questions(split="train"):
+    """Upload GSM8k dataset"""
     data = load_dataset("openai/gsm8k", "main", cache_dir="/tmp")[split]
     data = data.map(
         lambda x: {

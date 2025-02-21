@@ -1,4 +1,5 @@
 import re
+import json
 from tqdm import tqdm
 from transformers import AutoTokenizer
 from vllm import LLM, SamplingParams
@@ -84,31 +85,38 @@ if __name__ == "__main__":
     init()
     params = Config()
 
-    # Load the model
+    # Load the model to eval
+    print(f"Evaluating model {params.OUTPUT_MODEL}")
+    llm = LLM(model=params.OUTPUT_MODEL)
+    tokenizer = AutoTokenizer.from_pretrained(params.OUTPUT_MODEL)
+
+    # Load the evaluation dataset
     gsm8k_test = get_gsm8k_questions("test")
 
-    MODEL_NAME = "Google/gemma-2-2b-it"
-    #MODEL_NAME = "gemma-2-2b-it-grpo"
-
-    llm = LLM(model=MODEL_NAME)
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-
+    # Initialize dictionaries and lists to store results
     ground_truth = {}
     answers = {}
     input_tokens = []
     output_tokens = []
+    records = {}
+
+    # Initialize counters for evaluation metrics
     idx = 0
     correct_format = 0
     plausibly_correct = 0
     correct = 0
 
+    # Iterate through the test dataset
     for task_id, item in tqdm(enumerate(gsm8k_test), total=len(gsm8k_test)):
 
-        # Formulate and print the full prompt
+        # Extract the prompt and ground truth answer
         prompt = item["prompt"][0]["content"]
         ground_truth[task_id] = item["answer"]
 
+        # Tokenize and store input length
         input_tokens.append(get_num_tokens(prompt, tokenizer))
+
+        # Generate model response
         response = sampler(
             llm,
             input_string=prompt,
@@ -116,24 +124,47 @@ if __name__ == "__main__":
             max_prompt_length=params.max_prompt_length,
             max_completion_length=params.max_completion_length,
         )
+
+        # Tokenize and store output length
         output_tokens.append(get_num_tokens(response, tokenizer))
+
+        # Process and store the model's numerical answer
         answers[task_id] = remove_symbols(find_number(response))
 
+        # Check if response follows the required XML-like format
         pattern = r"^<reasoning>[\s\S]*?<\/reasoning>\s*<answer>[\s\S]*?<\/answer>$"
         if re.match(pattern, response.strip()):
             correct_format += 1
 
+        # Check if extracted answer matches the ground truth in any acceptable form
+        extracted_xml_answer = extract_last_xml_answer(response)
         if (
             answers[task_id] == ground_truth[task_id]
-            or extract_last_xml_answer(response) == ground_truth[task_id]
+            or extracted_xml_answer == ground_truth[task_id]
         ):
             plausibly_correct += 1
 
-        if extract_last_xml_answer(response) == ground_truth[task_id]:
+        # Check if the extracted XML answer is exactly correct
+        if extracted_xml_answer == ground_truth[task_id]:
             correct += 1
+
+        # Store record
+        records[task_id] = {
+            "prompt": prompt,
+            "answer": ground_truth[task_id],
+            "response": response,
+            "last_numeric_response": answers[task_id],
+            "xml_response": extracted_xml_answer,
+            "xml_match": bool(re.match(pattern, response.strip()))
+        }
 
         idx += 1
 
+# Save records to a JSON file
+with open("records.json", "w") as f:
+    json.dump(records, f, indent=4)
+
+# Report Benchmark results
 print("-" * 40)
 
 print(f"Input:  max tokens: {max(input_tokens)}")

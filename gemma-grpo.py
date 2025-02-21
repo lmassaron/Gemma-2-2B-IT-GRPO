@@ -6,12 +6,6 @@ from peft import LoraConfig
 from config import init, close, is_bfloat16_supported, get_gsm8k_questions, Config
 
 
-# meta-llama/Llama-3.2-3B
-# meta-llama/Llama-3.2-1B-Instruct
-# HuggingFaceTB/SmolLM2-1.7B-Instruct
-# Google/gemma-2-2b-it
-
-
 def extract_xml_answer(text, start_tag="<answer>", end_tag="</answer>"):
     """Extract the content within tags from a string using regex"""
 
@@ -62,11 +56,9 @@ def correctness_reward_func(completions, answer, **kwargs):
 
 
 if __name__ == "__main__":
+
     init()
     params = Config()
-
-    MODEL_NAME = "Google/gemma-2-2b-it"
-    OUTPUT_MODEL = "gemma-2-2b-it-grpo"
 
     gsm8k_train = get_gsm8k_questions(split="train")
 
@@ -110,8 +102,8 @@ if __name__ == "__main__":
         temperature=0.5,
         max_prompt_length=params.max_prompt_length,
         max_completion_length=params.max_completion_length,
-        num_train_epochs=1,  # Set to 1 for a full training run
-        max_steps=1024,  # 2496
+        num_train_epochs=2,
+        # max_steps=1024,
         logging_steps=100,
         save_steps=500,
         max_grad_norm=0.1,
@@ -120,21 +112,21 @@ if __name__ == "__main__":
         output_dir="outputs",
     )
 
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    tokenizer = AutoTokenizer.from_pretrained(params.MODEL_NAME)
 
     trainer = GRPOTrainer(
-        model=MODEL_NAME,
+        model=params.MODEL_NAME,
         processing_class=tokenizer,
         reward_funcs=[correctness_reward_func, format_reward_func],
         args=training_args,
         train_dataset=gsm8k_train,
         peft_config=peft_config,
     )
-
+    
     trainer.train()
 
     merged_model = trainer.model.merge_and_unload()
-    tokenizer.save_pretrained(OUTPUT_MODEL)
-    merged_model.save_pretrained(OUTPUT_MODEL)
+    tokenizer.save_pretrained(params.OUTPUT_MODEL)
+    merged_model.save_pretrained(params.OUTPUT_MODEL)
 
     close()
