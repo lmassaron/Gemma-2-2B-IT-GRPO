@@ -1,10 +1,14 @@
+"""
+This module contains all the configurations files and functions for GRPO training
+"""
+
 import os
 import gc
 import warnings
 import contextlib
 import torch
 from huggingface_hub import login
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 from vllm.distributed.parallel_state import (
     destroy_model_parallel,
     destroy_distributed_environment,
@@ -104,6 +108,60 @@ def get_gsm8k_questions(split="train"):
         }
     )
     return data
+
+
+def get_limo(split="train"):
+    """Upload GAIR/LIMO dataset"""
+    data = load_dataset("GAIR/LIMO", cache_dir="/tmp")[split]
+    data = data.map(
+        lambda x: {
+            "prompt": "\n".join(
+                [
+                    x["question"],
+                    R1_STYLE_SYSTEM_PROMPT,
+                    "<reasoning>",
+                    x["solution"],
+                    "</reasoning>",
+                    "<answer>",
+                    x["answer"],
+                    "<answer>",
+                ]
+            )
+        }
+    )
+    return data
+
+
+def get_splitted_limo(tokenizer, split="train", max_length=4096, overlap_chars=1024):
+    """Load GAIR/LIMO dataset and split long texts into overlapping chunks of max_length tokens."""
+
+    data = load_dataset("GAIR/LIMO", cache_dir="/tmp")[split]
+
+    examples = []
+    for example in data:
+
+        # Format text as a single string
+        text = "\n".join(
+            [
+                example["question"],
+                "<reasoning>",
+                example["solution"],
+                "</reasoning>",
+                "<answer>",
+                example["answer"],
+                "</answer>",
+            ]
+        )
+
+        # Tokenize without truncation
+        input_ids = tokenizer.encode(text, truncation=False, add_special_tokens=False)
+
+        for i in range(0, len(input_ids), max_length - overlap_chars):
+            chunk = input_ids[i : i + max_length]
+            examples.append(tokenizer.decode(chunk))
+
+    dataset = Dataset.from_dict({"prompt": examples})
+    return dataset
 
 
 if __name__ == "__main__":

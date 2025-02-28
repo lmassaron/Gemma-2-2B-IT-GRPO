@@ -1,3 +1,7 @@
+"""
+Training instructions for RL GRPO on GSM8K
+"""
+
 import re
 import json
 from tqdm import tqdm
@@ -14,6 +18,7 @@ def sampler(
     max_prompt_length=None,
     max_completion_length=256,
 ):
+    """LLM generration function"""
     sampling_params = SamplingParams(
         temperature=temperature,
         top_p=top_p,
@@ -27,9 +32,9 @@ def sampler(
 def extract_xml_answer(text, start_tag="<answer>", end_tag="</answer>"):
     """Extract the content within tags from a string using regex"""
 
-    pattern = re.escape(start_tag) + r"(.*?)" + re.escape(end_tag)
+    tag_pattern = re.escape(start_tag) + r"(.*?)" + re.escape(end_tag)
     match = re.search(
-        pattern, text, re.DOTALL
+        tag_pattern, text, re.DOTALL
     )  # DOTALL allows matching across multiple lines
 
     if match:
@@ -43,8 +48,8 @@ def extract_xml_answer(text, start_tag="<answer>", end_tag="</answer>"):
 def extract_last_xml_answer(text, start_tag="<answer>", end_tag="</answer>"):
     """Extract the content within the last occurrence of tags from a string using regex"""
 
-    pattern = re.escape(start_tag) + r"(.*?)" + re.escape(end_tag)
-    matches = re.findall(pattern, text, re.DOTALL)  # Find all matches
+    tag_pattern = re.escape(start_tag) + r"(.*?)" + re.escape(end_tag)
+    matches = re.findall(tag_pattern, text, re.DOTALL)  # Find all matches
 
     if matches:
         answer = matches[-1]  # Get the last match
@@ -70,12 +75,13 @@ def find_number(search_string):
 
 
 def remove_symbols(x: str) -> str:
-    # Example: 5,600 -> 5600 | 55% -> 55 | 30$ -> 30
+    """Remove commas, pct and USD symbols"""
     return x.replace(",", "").replace("%", "").replace("$", "").strip()
 
 
-def get_num_tokens(text, tokenizer):
-    encoding = tokenizer(text, return_tensors="pt")
+def get_num_tokens(text, tokenizer_instance):
+    """Count the number of tokens in a string of text"""
+    encoding = tokenizer_instance(text, return_tensors="pt")
     input_ids = encoding["input_ids"]
     return len(input_ids[0])
 
@@ -155,13 +161,13 @@ if __name__ == "__main__":
             "response": response,
             "last_numeric_response": answers[task_id],
             "xml_response": extracted_xml_answer,
-            "xml_match": bool(re.match(pattern, response.strip()))
+            "xml_match": bool(re.match(pattern, response.strip())),
         }
 
         idx += 1
 
 # Save records to a JSON file
-with open("records.json", "w") as f:
+with open("records.json", "w", encoding="utf-8") as f:
     json.dump(records, f, indent=4)
 
 # Report Benchmark results
