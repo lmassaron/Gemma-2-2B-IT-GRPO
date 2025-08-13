@@ -2,6 +2,13 @@
 
 This project provides a comprehensive pipeline for fine-tuning the `Google/gemma-2-2b-it` model using Generative Reward Post-Optimization (GRPO). The goal is to improve the model's mathematical reasoning capabilities, with a specific focus on the GSM8K benchmark. The project also includes a preliminary Supervised Fine-Tuning (SFT) step on the LIMO dataset to guide the model towards a desired response format.
 
+You can find a detailed description of the project by reading my Medium articles:
+* [Training for Reasoning with GRPO — part I ( project overview & results)](https://medium.com/@lucamassaron/training-for-reasoning-with-grpo-881e1819f2df)
+* [Training for Reasoning with GRPO — part II (a step by step explanation)
+](https://medium.com/@lucamassaron/training-for-reasoning-with-grpo-part-ii-a-step-by-step-explanation-f80c219e2059)
+
+![Reasoning with Gemma](./minerva.png)
+
 ## Project Overview
 
 The core of this project is to leverage a two-stage fine-tuning process to enhance the reasoning abilities of the Gemma-2-2B-IT model:
